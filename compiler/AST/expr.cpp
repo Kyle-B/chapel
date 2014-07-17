@@ -3197,6 +3197,20 @@ void codegenAssign(GenRet to_ptr, GenRet from)
   }
 }
 
+static void codegenCreateRef(GenRet to, GenRet from) {
+  GenInfo* info = gGenInfo;
+
+  //std::string stmt = codegenDeref(to).c + " = ";
+  std::string stmt = to.c + " = ";
+  if (!from.chplType->symbol->hasFlag(FLAG_REF))
+    stmt += codegenAddrOf(from).c;
+  else
+    stmt += codegenDeref(from).c;
+  stmt += ";\n";
+  info->cStatements.push_back(stmt);
+}
+
+
 
 static GenRet 
 codegenExprMinusOne(Expr* expr)
@@ -4380,6 +4394,11 @@ GenRet CallExpr::codegen() {
       codegenOpAssign(get(1), get(2), " ^= ", codegenXor);
       break;
 
+    case PRIM_CREATE_REF:
+      INT_ASSERT(get(1));
+      codegenCreateRef(get(1), get(2));
+      break;
+
     case PRIM_POW:
       ret = codegenCallExpr("pow", get(1), get(2));
       break;
@@ -5435,9 +5454,12 @@ GenRet CallExpr::codegen() {
 
     arg = actual;
 
-    SymExpr* se = toSymExpr(actual);
-    if (se && isFnSymbol(se->var))
-      arg = codegenCast("chpl_fn_p", arg);
+    if (SymExpr* se = toSymExpr(actual)) {
+      if (isFnSymbol(se->var))
+        arg = codegenCast("chpl_fn_p", arg);
+      if (se->var->hasFlag(FLAG_REF_VAR))
+        arg = codegenDeref(arg);
+    }
 
     // Handle passing strings to externs
     if (fn->hasFlag(FLAG_EXTERN)) {
@@ -5458,7 +5480,7 @@ GenRet CallExpr::codegen() {
         if( c ) arg = codegenDeref(arg);
       }
     }
- 
+
     args[i] = arg;
     i++;
   }

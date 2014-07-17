@@ -52,6 +52,7 @@ struct PassInfo {
 #define LOG_removeEmptyRecords                 'm'
 #define LOG_localizeGlobals                    'l'
 #define LOG_loopInvariantCodeMotion            'q'
+#define LOG_transformRefVars                   'R'
 #define LOG_prune2                             'Y'
 #define LOG_returnStarTuplesByRefArgs          's'
 #define LOG_insertWideReferences               'W'
@@ -126,6 +127,8 @@ static PassInfo sPassList[] = {
   RUN(optimizeOnClauses),       // Optimize on clauses
   RUN(addInitCalls),            // Add module init calls and guards.
   RUN(loopInvariantCodeMotion), // move loop invarient code above loop runs
+
+  RUN(transformRefVars),     // convert ref vars into the actual variable
 
   // AST to C or LLVM
   RUN(insertLineNumbers),       // insert line numbers for error messages

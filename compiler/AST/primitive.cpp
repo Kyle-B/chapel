@@ -141,6 +141,12 @@ returnInfoVal(CallExpr* call) {
 
 static Type*
 returnInfoRef(CallExpr* call) {
+  if (SymExpr* sym = toSymExpr(call->get(1))) {
+    if (sym->var->hasFlag(FLAG_REF_VAR)) {
+      return sym->var->type;
+    }
+  }
+
   Type* t = call->get(1)->typeInfo();
   if (!t->refType)
     INT_FATAL(call, "invalid attempt to get reference type");
@@ -402,6 +408,8 @@ initPrimitive() {
   prim_def(PRIM_AND_ASSIGN, "&=", returnInfoVoid, true);
   prim_def(PRIM_OR_ASSIGN, "|=", returnInfoVoid, true);
   prim_def(PRIM_XOR_ASSIGN, "^=", returnInfoVoid, true);
+
+  prim_def(PRIM_CREATE_REF, "create_ref", returnInfoVoid, true);
 
   prim_def(PRIM_MIN, "_min", returnInfoFirst);
   prim_def(PRIM_MAX, "_max", returnInfoFirst);

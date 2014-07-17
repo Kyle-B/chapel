@@ -135,7 +135,7 @@ static void extractReferences(Expr* expr,
   if (CallExpr* call = toCallExpr(expr))
   {
     // Only the move primitive creates an available pair.
-    if (call->isPrimitive(PRIM_MOVE) || call->isPrimitive(PRIM_ASSIGN))
+    if (call->isPrimitive(PRIM_MOVE) || call->isPrimitive(PRIM_ASSIGN) || call->isPrimitive(PRIM_CREATE_REF))
     {
       SymExpr* lhe = toSymExpr(call->get(1)); // Left-Hand Expression
       Symbol* lhs = lhe->var; // Left-Hand Symbol

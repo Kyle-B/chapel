@@ -1542,8 +1542,10 @@ buildVarDecls(BlockStmt* stmts, Flag externconfig, Flag varconst, Flag ref, char
           var->addFlag(externconfig);
         if (varconst != FLAG_UNKNOWN)
           var->addFlag(varconst);
-        if (ref != FLAG_UNKNOWN)
+        if (ref != FLAG_UNKNOWN) {
           var->addFlag(ref);
+          var->addFlag(FLAG_REF);
+        }
 
         if (var->hasFlag(FLAG_CONFIG)) {
           if (Expr *configInit = getCmdLineConfig(var->name)) {

@@ -153,7 +153,8 @@ static VarSymbol* createRefArgIfNeeded(FnSymbol*  fn,
   // Does the formal expect a ref, yet the actual is not one?
   //
   if (formalType->symbol->hasFlag(FLAG_REF) && 
-      formalType->getValType() == arg->type) {
+      formalType->getValType() == arg->type &&
+      !arg->hasFlag(FLAG_REF_VAR)) {
     SET_LINENO(arg);
     refTmp = newTemp("_ref_tmp_", formalType);
     *refTmpAssign = new CallExpr(PRIM_MOVE, refTmp, 
@@ -914,6 +915,12 @@ static void insertReferenceTemps() {
       // Insert reference temps for function arguments that expect them.
       //
       for_formals_actuals(formal, actual, call) {
+        // skip ref vars
+        if (SymExpr* sym = toSymExpr(actual)) {
+          if (sym->var->hasFlag(FLAG_REF_VAR))
+            continue;
+        }
+
         if (formal->type == actual->typeInfo()->refType) {
           SET_LINENO(call);
           VarSymbol* tmp = newTemp("_ref_tmp_", formal->type);

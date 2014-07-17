@@ -238,6 +238,16 @@ void normalize(BaseAST* base) {
   }
 }
 
+static bool isDefPrimitive(CallExpr* call) {
+  if (call && (call->isPrimitive(PRIM_MOVE) ||
+               call->isPrimitive(PRIM_ASSIGN) ||
+               call->isPrimitive(PRIM_CREATE_REF))) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 // We can't really do this before resolution, because we need to know
 // if symbols used as actual arguments are passed by ref, inout, or out
 // (all of which would be considered definitions).
@@ -266,7 +276,7 @@ checkUseBeforeDefs() {
         if (CallExpr* call = toCallExpr(ast)) {
           // A symbol gets defined when it appears on the LHS of a move or
           // assignment.
-          if (call->isPrimitive(PRIM_MOVE) || call->isPrimitive(PRIM_ASSIGN))
+          if (isDefPrimitive(call))
             if (SymExpr* se = toSymExpr(call->get(1)))
               defined.set_add(se->var);
         } else if (DefExpr* def = toDefExpr(ast)) {
@@ -291,11 +301,9 @@ checkUseBeforeDefs() {
           // that symbol is not defined/declared before use
           if (SymExpr* sym = toSymExpr(ast)) {
             CallExpr* call = toCallExpr(sym->parentExpr);
-            if (call && 
-                (call->isPrimitive(PRIM_MOVE) || call->isPrimitive(PRIM_ASSIGN)) &&
-                call->get(1) == sym)
+            if (call && (isDefPrimitive(call) && call->get(1) == sym))
               continue; // We already handled this case above.
-          
+
             if (toModuleSymbol(sym->var)) {
               if (!toFnSymbol(fn->defPoint->parentSymbol)) {
                 if (!call || !call->isPrimitive(PRIM_USED_MODULES_LIST)) {
@@ -318,9 +326,7 @@ checkUseBeforeDefs() {
             }
           } else if (UnresolvedSymExpr* sym = toUnresolvedSymExpr(ast)) {
             CallExpr* call = toCallExpr(sym->parentExpr);
-            if (call &&
-                (call->isPrimitive(PRIM_MOVE) || call->isPrimitive(PRIM_ASSIGN)) &&
-                call->get(1) == sym)
+            if (call && (isDefPrimitive(call) && call->get(1) == sym))
               continue; // We already handled this case above.
             if ((!call || (call->baseExpr != sym && !call->isPrimitive(PRIM_CAPTURE_FN))) && sym->unresolved) {
               if (!undeclared.set_in(sym->unresolved)) {
@@ -864,28 +870,7 @@ fix_def_expr(VarSymbol* var) {
   // handle ref variables
   //
   if (var->hasFlag(FLAG_REF_VAR)) {
-    Expr* varLocation = NULL;
-
-    // If this is a const reference to an immediate, we need to insert a temp
-    // variable so we can take the address of it, non-const references to an
-    // immediate are not allowed.
-    if (var->hasFlag(FLAG_CONST)) {
-      if (SymExpr* initSym = toSymExpr(init)) {
-        if (initSym->var->isImmediate()) {
-          VarSymbol* constRefTemp  = newTemp("const_ref_immediate_tmp");
-          stmt->insertBefore(new DefExpr(constRefTemp));
-          stmt->insertBefore(new CallExpr(PRIM_MOVE, constRefTemp, init->remove()));
-          varLocation = new SymExpr(constRefTemp);
-        }
-      }
-    }
-
-    if (!varLocation) {
-      varLocation = init->remove();
-    }
-
-    stmt->insertAfter(new CallExpr(PRIM_MOVE, var, new CallExpr(PRIM_ADDR_OF, varLocation)));
-
+    stmt->insertAfter(new CallExpr(PRIM_CREATE_REF, var, init->remove()));
     return;
   }
 

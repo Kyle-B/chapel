@@ -54,6 +54,7 @@ void resolveIntents();
 void returnStarTuplesByRefArgs();
 void scalarReplace();
 void scopeResolve();
+void transformRefVars();
 void verify();
 
 //

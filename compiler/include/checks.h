@@ -37,6 +37,7 @@ void check_removeWrapRecords();
 void check_removeEmptyRecords();
 void check_localizeGlobals();
 void check_loopInvariantCodeMotion();
+void check_transformRefVars();
 void check_prune2();
 void check_returnStarTuplesByRefArgs();
 void check_insertWideReferences();

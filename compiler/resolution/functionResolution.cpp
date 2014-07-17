@@ -290,6 +290,7 @@ static void resolveTupleAndExpand(CallExpr* call);
 static void resolveTupleExpand(CallExpr* call);
 static void resolveSetMember(CallExpr* call);
 static void resolveMove(CallExpr* call);
+static void resolveCreateRef(CallExpr* call);
 static void resolveNew(CallExpr* call);
 static bool formalRequiresTemp(ArgSymbol* formal);
 static void insertFormalTemps(FnSymbol* fn);
@@ -2922,6 +2923,7 @@ resolveCall(CallExpr* call)
      case PRIM_TUPLE_EXPAND:        resolveTupleExpand(call);           break;
      case PRIM_SET_MEMBER:          resolveSetMember(call);             break;
      case PRIM_MOVE:                resolveMove(call);                  break;
+     case PRIM_CREATE_REF:          resolveCreateRef(call);             break;
      case PRIM_TYPE_INIT:
      case PRIM_INIT:                resolveDefaultGenericType(call);    break;
      case PRIM_NO_INIT:             resolveDefaultGenericType(call);    break;
@@ -3499,6 +3501,43 @@ static void resolveMove(CallExpr* call) {
   }
 }
 
+
+static void resolveCreateRef(CallExpr* call) {
+  Expr* rhs = call->get(2);
+  Symbol* lhs = NULL;
+  if (SymExpr* se = toSymExpr(call->get(1)))
+    lhs = se->var;
+  INT_ASSERT(lhs);
+
+  Type* rhsType = rhs->typeInfo();
+  //makeRefType(rhsType); // make sure rhsType has a refType
+
+  if (CallExpr* call = toCallExpr(rhs)) {
+    if (FnSymbol* fn = call->isResolved()) {
+      if (rhsType == dtUnknown) {
+        USR_FATAL_CONT(fn, "unable to resolve return type of function '%s'", fn->name);
+        USR_FATAL(rhs, "called recursively at this point");
+      }
+    }
+  }
+  if (rhsType == dtUnknown)
+    USR_FATAL(call, "unable to resolve type");
+
+  if (rhsType == dtVoid) {
+    if (CallExpr* rhsFn = toCallExpr(rhs)) {
+      if (FnSymbol* rhsFnSym = rhsFn->isResolved()) {
+        USR_FATAL(userCall(call), 
+                  "illegal use of function that does not return a value: '%s'", 
+                  rhsFnSym->name);
+      }
+    }
+    USR_FATAL(userCall(call), 
+              "illegal use of function that does not return a value");
+  }
+
+  if (lhs->type == dtUnknown || lhs->type == dtNil)
+    lhs->type = rhsType;
+}
 
 // Some new expressions are converted in normalize().  For example, a call to a
 // type function is resolved at this point.

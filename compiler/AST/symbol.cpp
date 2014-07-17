@@ -520,6 +520,10 @@ GenRet VarSymbol::codegen() {
       if( hasFlag(FLAG_CONST) && hasFlag(FLAG_EXTERN) ) {
         ret.isLVPtr = GEN_VAL;
         ret.c = cname;
+      } else if (hasFlag(FLAG_REF_VAR)) {
+        //ret.c = '&';
+        ret.c = cname;
+        ret.isLVPtr = GEN_VAL;
       } else {
         ret.c = '&';
         ret.c += cname;

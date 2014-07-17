@@ -55,6 +55,8 @@ enum PrimitiveTag {
   PRIM_OR_ASSIGN,
   PRIM_XOR_ASSIGN,
 
+  PRIM_CREATE_REF,
+
   PRIM_MIN,
   PRIM_MAX,
 

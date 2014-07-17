@@ -22,7 +22,8 @@ PASSES_SRCS = \
         parallel.cpp \
         resolveIntents.cpp \
         returnStarTuplesByRefArgs.cpp \
-        scopeResolve.cpp
+        scopeResolve.cpp \
+        transformRefVars.cpp
 
 SVN_SRCS = $(PASSES_SRCS)
 SRCS = $(SVN_SRCS)

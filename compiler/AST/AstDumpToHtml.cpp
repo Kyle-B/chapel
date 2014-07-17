@@ -231,7 +231,10 @@ bool AstDumpToHtml::enterDefExpr(DefExpr* node) {
     if (vs->type->symbol->hasFlag(FLAG_SINGLE))
       fprintf(mFP, "<B>single </B>");
 
-    fprintf(mFP, "<B>var </B> ");
+    if (vs->hasFlag(FLAG_REF_VAR))
+      fprintf(mFP, "<B>ref </B> ");
+    else
+      fprintf(mFP, "<B>var </B> ");
     writeSymbol(node->sym, true);
 
   } else if (ArgSymbol* s = toArgSymbol(node->sym)) {
