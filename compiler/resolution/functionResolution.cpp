@@ -4532,7 +4532,7 @@ preFold(Expr* expr) {
       if (!se->var->hasFlag(FLAG_TYPE_VARIABLE))
         USR_FATAL(call, "invalid type specification");
       Type* type = call->get(1)->getValType();
-      
+
       if (type->defaultValue || type->symbol->hasFlag(FLAG_ITERATOR_CLASS)) {
         // In these cases, the _defaultOf method for that type can be resolved
         // now.  Otherwise, it needs to wait until resolveRecordInitializers
@@ -4540,6 +4540,17 @@ preFold(Expr* expr) {
         call->replace(result);
       } else {
         inits.add(call);
+      }
+    } else if (call->isPrimitive(PRIM_CREATE_REF)) {
+      SymExpr* lhs = toSymExpr(call->get(1));
+      if (SymExpr* rhs = toSymExpr(call->get(2))) {
+        if (!lhs->var->isConstant() && (rhs->var->isConstant() || rhs->var->isParameter())) {
+          if (rhs->var->isImmediate()) {
+            USR_FATAL_CONT(call, "Can not set a non-const reference to a literal value.");
+          } else {
+            USR_FATAL_CONT(call, "Can not set a non-const reference to a const variable.");
+          }
+        }
       }
     } else if (call->isPrimitive(PRIM_TYPEOF)) {
       Type* type = call->get(1)->getValType();
@@ -4721,11 +4732,10 @@ preFold(Expr* expr) {
         // This test is turned off if we are in a wrapper function.
         FnSymbol* fn = call->getFunction();
         if (!fn->hasFlag(FLAG_WRAPPER)) {
-          SymExpr* lhs = NULL;
           // check legal var function return
           if (CallExpr* move = toCallExpr(call->parentExpr)) {
             if (move->isPrimitive(PRIM_MOVE)) {
-              lhs = toSymExpr(move->get(1));
+              SymExpr* lhs = toSymExpr(move->get(1));
               if (lhs && lhs->var == fn->getReturnSymbol()) {
                 SymExpr* ret = toSymExpr(call->get(1));
                 INT_ASSERT(ret);
@@ -4739,26 +4749,15 @@ preFold(Expr* expr) {
               }
             }
           }
-          //
           // check that the operand of 'addr of' is a legal lvalue.
           if (SymExpr* rhs = toSymExpr(call->get(1))) {
-            if (!(lhs && lhs->var->hasFlag(FLAG_REF_VAR) && lhs->var->hasFlag(FLAG_CONST))) {
-              if (rhs->var->hasFlag(FLAG_EXPR_TEMP) || rhs->var->isConstant() || rhs->var->isParameter()) {
-                if (lhs && lhs->var->hasFlag(FLAG_REF_VAR)) {
-                  if (rhs->var->isImmediate()) {
-                    USR_FATAL_CONT(call, "Can not set a non-const reference to a literal value.");
-                  } else {
-                    USR_FATAL_CONT(call, "Can not set a non-const reference to a const variable.");
-                  }
-                } else {
-                  // This probably indicates that an invalid 'addr of' primitive
-                  // was inserted, which would be the compiler's fault, not the
-                  // user's.
-                  // At least, we might perform the check at or before the 'addr
-                  // of' primitive is inserted.
-                  INT_FATAL(call, "A non-lvalue appears where an lvalue is expected.");
-                }
-              }
+            if (rhs->var->hasFlag(FLAG_EXPR_TEMP) || rhs->var->isConstant() || rhs->var->isParameter()) {
+              // This probably indicates that an invalid 'addr of' primitive
+              // was inserted, which would be the compiler's fault, not the
+              // user's.
+              // At least, we might perform the check at or before the 'addr
+              // of' primitive is inserted.
+              INT_FATAL(call, "A non-lvalue appears where an lvalue is expected.");
             }
           }
         }

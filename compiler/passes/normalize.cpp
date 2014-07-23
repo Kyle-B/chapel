@@ -767,7 +767,8 @@ static void insert_call_temps(CallExpr* call)
   // TODO: Check if we need a call temp for PRIM_ASSIGN.
   CallExpr* parentCall = toCallExpr(call->parentExpr);
   if (parentCall && (parentCall->isPrimitive(PRIM_MOVE) ||
-                     parentCall->isPrimitive(PRIM_NEW)))
+                     parentCall->isPrimitive(PRIM_NEW)  ||
+                     parentCall->isPrimitive(PRIM_CREATE_REF)))
     return;
 
   SET_LINENO(call);
@@ -870,7 +871,27 @@ fix_def_expr(VarSymbol* var) {
   // handle ref variables
   //
   if (var->hasFlag(FLAG_REF_VAR)) {
-    stmt->insertAfter(new CallExpr(PRIM_CREATE_REF, var, init->remove()));
+    Expr* varLocation = NULL;
+
+    // If this is a const reference to an immediate, we need to insert a temp
+    // variable so we can take the address of it, non-const references to an
+    // immediate are not allowed.
+    if (var->hasFlag(FLAG_CONST)) {
+      if (SymExpr* initSym = toSymExpr(init)) {
+        if (initSym->var->isImmediate()) {
+          VarSymbol* constRefTemp  = newTemp("const_ref_immediate_tmp");
+          stmt->insertBefore(new DefExpr(constRefTemp));
+          stmt->insertBefore(new CallExpr(PRIM_MOVE, constRefTemp, init->remove()));
+          varLocation = new SymExpr(constRefTemp);
+        }
+      }
+    }
+
+    if (!varLocation) {
+      varLocation = init->remove();
+    }
+
+    stmt->insertAfter(new CallExpr(PRIM_CREATE_REF, var, varLocation));
     return;
   }
 

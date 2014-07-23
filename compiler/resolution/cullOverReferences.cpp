@@ -66,6 +66,8 @@ void cullOverReferences() {
     if (FnSymbol* fn = call->isResolved()) {
       if (FnSymbol* copy = fn->valueFunction) {
         if (CallExpr* move = toCallExpr(call->parentExpr)) {
+          if (move->isPrimitive(PRIM_CREATE_REF))
+            continue;
           INT_ASSERT(move->isPrimitive(PRIM_MOVE));
           SymExpr* se = toSymExpr(move->get(1));
           INT_ASSERT(se);

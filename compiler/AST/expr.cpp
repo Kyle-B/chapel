@@ -4070,10 +4070,19 @@ GenRet CallExpr::codegen() {
         break;
       }
       if (get(1)->typeInfo()->symbol->hasFlag(FLAG_REF) &&
-          !get(2)->typeInfo()->symbol->hasFlag(FLAG_REF))
+          !get(2)->typeInfo()->symbol->hasFlag(FLAG_REF)) {
         codegenAssign(codegenDeref(get(1)), get(2));
-      else
-        codegenAssign(get(1), get(2));
+      } else {
+        SymExpr* lhs = toSymExpr(get(1));
+        SymExpr* rhs = toSymExpr(get(2));
+        bool lhsRefVar = lhs ? lhs->var->hasFlag(FLAG_REF_VAR) : false;
+        bool rhsRefVar = rhs ? rhs->var->hasFlag(FLAG_REF_VAR) : false;
+        if (!lhsRefVar && rhsRefVar) {
+          codegenAssign(get(1), codegenDeref(get(2)));
+        } else {
+          codegenAssign(get(1), get(2));
+        }
+      }
       break;
     } // End of PRIM_MOVE
 

@@ -135,7 +135,7 @@ static void extractReferences(Expr* expr,
   if (CallExpr* call = toCallExpr(expr))
   {
     // Only the move primitive creates an available pair.
-    if (call->isPrimitive(PRIM_MOVE) || call->isPrimitive(PRIM_ASSIGN) || call->isPrimitive(PRIM_CREATE_REF))
+    if (call->isPrimitive(PRIM_MOVE) || call->isPrimitive(PRIM_ASSIGN))
     {
       SymExpr* lhe = toSymExpr(call->get(1)); // Left-Hand Expression
       Symbol* lhs = lhe->var; // Left-Hand Symbol
@@ -514,6 +514,7 @@ static void propagateCopies(std::vector<SymExpr*>& symExprs,
   for_vector(SymExpr, se, symExprs)
   {
     INT_ASSERT(! isUnresolvedSymExpr(se));
+
     // Replace an alias with its definition, using the current set of
     // available pairs.
     if (isUse(se))
@@ -523,19 +524,26 @@ static void propagateCopies(std::vector<SymExpr*>& symExprs,
       // If so, replace the alias with its definition.
       if (alias_def_pair != available.end())
       {
-        // This special case is needed to prevent propagating a string literal
-        // into the return statement of a function.  Right now,
-        // insertWideReferences does not automatically widen the result of a
-        // function returning a narrow string.  Instead, it relies on there
-        // being a return value variable that is widened before it is
-        // returned.  If we return a literal, that variable doesn't exist, so
-        // the return type ends up being narrow (which is not correct).
-        // After chapel strings become records, this special-case code can be
-        // removed.
         if (CallExpr* call = toCallExpr(se->parentExpr))
+        {
+          // This special case is needed to prevent propagating a string literal
+          // into the return statement of a function.  Right now,
+          // insertWideReferences does not automatically widen the result of a
+          // function returning a narrow string.  Instead, it relies on there
+          // being a return value variable that is widened before it is
+          // returned.  If we return a literal, that variable doesn't exist, so
+          // the return type ends up being narrow (which is not correct).
+          // After chapel strings become records, this special-case code can be
+          // removed.
           if (call->isPrimitive(PRIM_RETURN) &&
               se->var->typeInfo() == dtString)
             continue;
+
+          // PRIM_CREATE_REF has a temp that we don't want to replace when
+          // creating a const reference to an immediate value
+          if (call->isPrimitive(PRIM_CREATE_REF))
+            continue;
+        }
 #if DEBUG_CP
         if (debug > 0)
           printf("Replacing %s[%d] with %s[%d]\n",
