@@ -532,13 +532,19 @@ module CString {
   inline proc +(a: c_string, b: c_string)
     return __primitive("string_concat", a, b);
 
-  proc c_string.writeThis(x: Writer) {
+  proc param c_string.writeThis(x: Writer) {
     x.write(this);
+  }
+  proc c_string.writeThis(x: Writer) {
+    compilerError("Cannot write a c_string, use a string if you want multi-locale IO.");
   }
   // The c_string_copy version is required, since apparently coercions are not
   // applied to "this".
-  proc c_string_copy.writeThis(x: Writer) {
+  proc param c_string_copy.writeThis(x: Writer) {
     x.write(this:c_string);
+  }
+  proc c_string_copy.writeThis(x: Writer) {
+    compilerError("Cannot write a c_string, use a string if you want multi-locale IO.");
   }
 
 
