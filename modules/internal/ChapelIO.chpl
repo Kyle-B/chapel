@@ -601,31 +601,31 @@ module ChapelIO {
   pragma "no prototype"
   extern proc chpl_format(fmt: c_string, x): c_string_copy;
   
-  proc format(fmt: c_string, x:?t) where isIntegralType(t) || isFloatType(t) {
+  proc format(fmt: c_string, x:?t) where isIntegralType(t) || isFloatType(t) : string {
     if fmt.substring(1) == "#" {
       var fmt2 = _getoutputformat(fmt);
       if isImagType(t) then
-        return (chpl_format(fmt2, _i2r(x))+"i");
+        return (chpl_format(fmt2, _i2r(x))+"i"):string;
       else
-        return chpl_format(fmt2, x:real);
+        return chpl_format(fmt2, x:real):string;
     } else 
-        return chpl_format(fmt, x);
+        return chpl_format(fmt, x):string;
   }
   
-  proc format(fmt: c_string, x:?t) where isComplexType(t) {
+  proc format(fmt: c_string, x:?t) where isComplexType(t) : string {
     if fmt.substring(1) == "#" {
       var fmt2 = _getoutputformat(fmt);
-      return (chpl_format(fmt2, x.re)+" + "+ chpl_format(fmt2, x.im)+"i");
+      return (chpl_format(fmt2, x.re)+" + "+ chpl_format(fmt2, x.im)+"i"):string;
     } else 
-      return chpl_format(fmt, x);
+      return chpl_format(fmt, x):string;
   }
   
-  proc format(fmt: c_string, x: ?t) {
-    return chpl_format(fmt, x);
+  proc format(fmt: c_string, x: ?t) : string {
+    return chpl_format(fmt, x):string;
   }
   
-  proc format(fmt: string, x: ?t) {
-    return format(fmt.c_str(), x);
+  proc format(fmt: string, x: ?t) : string {
+    return format(fmt.c_str(), x):string;
   }
   
   proc _getoutputformat(s: c_string):c_string {
