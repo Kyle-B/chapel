@@ -304,7 +304,7 @@ module DefaultRectangular {
         return if i == rangeTuple.size then rangeTuple(i).stridable
                else rangeTuple(i).stridable || anyStridable(rangeTuple, i+1);
   
-      chpl__testPar("default rectangular domain follower invoked on ":string_rec, followThis);
+      chpl__testPar("default rectangular domain follower invoked on ", followThis);
       if debugDefaultDist then
         writeln("In domain follower code: Following ", followThis);
       param stridable = this.stridable || anyStridable(followThis);

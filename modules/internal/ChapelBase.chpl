@@ -896,6 +896,9 @@ module ChapelBase {
 
   inline proc _cast(type t, x) where t:object && x:t
     return __primitive("cast", t, x);
+
+  inline proc _cast(type t, x) where !t:object && x:t
+    return x;
   
   inline proc _cast(type t, x) where t:object && x:_nilType
     return __primitive("cast", t, x);
@@ -990,12 +993,12 @@ module ChapelBase {
     pragma "no auto destroy" var x: t;
     return x;
   }
-  
+
   pragma "init copy fn"
   inline proc chpl__initCopy(type t) {
     compilerError("illegal assignment of type to value");
   }
-  
+
   pragma "ref"
   pragma "init copy fn"
   inline proc chpl__initCopy(r: _ref) return chpl__initCopy(__primitive("deref", r));
