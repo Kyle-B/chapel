@@ -562,7 +562,7 @@ module ChapelIO {
     //if isNilObject(x) then "nil".writeThis(w);
     //else                   x.writeThis(w);
     w.write(x);
-    const result = w.s;
+    const result = w.s.steal_base();
     delete w;
     return result;
   }
@@ -571,8 +571,7 @@ module ChapelIO {
   proc ref c_string.write(args ...?n) {
     var sc = new StringWriter(this:string);
     sc.write((...args));
-    // We need to copy this string because the destructor call below frees it
-    this = sc.s.c_str();
+    this = sc.s._steal_base();
     delete sc;
   }
   
@@ -582,51 +581,6 @@ module ChapelIO {
     sc.write((...args));
     this = sc.s;
     delete sc;
-  }
-  
-  // C can't handle overloaded declarations, so just don't prototype this one.
-  pragma "no prototype"
-  extern proc chpl_format(fmt: c_string, x): c_string_copy;
-  
-  proc format(fmt: c_string, x:?t) where isIntegralType(t) || isFloatType(t) {
-    if fmt.substring(1) == "#" {
-      var fmt2 = _getoutputformat(fmt);
-      if isImagType(t) then
-        return (chpl_format(fmt2, _i2r(x))+"i");
-      else
-        return chpl_format(fmt2, x:real);
-    } else 
-        return chpl_format(fmt, x);
-  }
-  
-  proc format(fmt: c_string, x:?t) where isComplexType(t) {
-    if fmt.substring(1) == "#" {
-      var fmt2 = _getoutputformat(fmt);
-      return (chpl_format(fmt2, x.re)+" + "+ chpl_format(fmt2, x.im)+"i");
-    } else 
-      return chpl_format(fmt, x);
-  }
-  
-  proc format(fmt: c_string, x: ?t) {
-    return chpl_format(fmt, x);
-  }
-  
-  proc format(fmt: string, x: ?t) {
-    return format(fmt.c_str(), x);
-  }
-  
-  proc _getoutputformat(s: c_string):c_string {
-    var sn = s.length;
-    var afterdot = false;
-    var dplaces = 0;
-    for i in 1..sn {
-      var ss = s.substring(i);
-      if ((ss == '#') & afterdot) then dplaces += 1;
-      if (ss == '.') then afterdot=true;
-      chpl_free_c_string_copy(ss);
-    }
-    // FIX ME: leak c_string due to concatenation
-    return("%" + sn + "." + dplaces + "f");
   }
   
   //
