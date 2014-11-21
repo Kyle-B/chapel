@@ -71,12 +71,6 @@ int32_t string_compare(c_string x, c_string y) {
   return (int32_t)strcmp(x, y);
 }
 
-//
-// stopgap formatting
-//
-c_string_copy chpl_format(c_string format, ...)
-  __attribute__((format(printf, 1, 2)));
-
 // Uses the system allocator.
 char* chpl_glom_strings(int numstrings, ...);
 
