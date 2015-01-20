@@ -28,6 +28,7 @@
 #include "symbol.h"
 
 
+#ifndef HILDE_MM
 // Clear autoDestroy flags on variables that get assigned to the return value of
 // certain functions.
 //
@@ -664,7 +665,7 @@ returnRecordsByReferenceArguments() {
   }
   freeDefUseMaps(defMap, useMap);
 }
-
+#endif
 
 static void
 fixupDestructors() {
@@ -794,7 +795,7 @@ static void insertDestructorCalls()
   }
 }
 
-
+#ifndef HILDE_MM
 static void insertAutoCopyTemps()
 {
   Map<Symbol*,Vec<SymExpr*>*> defMap;
@@ -825,7 +826,7 @@ static void insertAutoCopyTemps()
 
   freeDefUseMaps(defMap, useMap);
 }
-
+#endif
 
 // This routine inserts autoCopy calls ahead of yield statements as necessary,
 // so the calling routine "owns" the returned value.
@@ -907,11 +908,13 @@ void
 callDestructors() {
   fixupDestructors();
   insertDestructorCalls();
+#ifndef HILDE_MM
   insertAutoCopyTemps();
   cullAutoDestroyFlags();
   cullExplicitAutoDestroyFlags();
   insertAutoDestroyCalls();
   returnRecordsByReferenceArguments();
+#endif
   insertYieldTemps();
   insertGlobalAutoDestroyCalls();
   insertReferenceTemps();
