@@ -535,69 +535,12 @@ llvm::Value* codegenImmediateLLVM(Immediate* i)
       }
       break;
     case CONST_KIND_STRING:
-
-        // Note that string immediate values are stored
-        // with C escapes - that is newline is 2 chars \ n
-        // so we have to convert to a sequence of bytes
-        // for LLVM (the C backend can just print it out).
-
-        std::string newString = "";
-        char nextChar;
-        int pos = 0;
-
-        while((nextChar = i->v_string[pos++]) != '\0') {
-          if(nextChar != '\\') {
-            newString += nextChar;
-            continue;
-          }
-
-          nextChar = i->v_string[pos++];
-          switch(nextChar) {
-            case '\'':
-            case '\"':
-            case '?':
-            case '\\':
-              newString += nextChar;
-              break;
-            case 'a':
-              newString += '\a';
-              break;
-            case 'b':
-              newString += '\b';
-              break;
-            case 'f':
-              newString += '\f';
-              break;
-            case 'n':
-              newString += '\n';
-              break;
-            case 'r':
-              newString += '\r';
-              break;
-            case 't':
-              newString += '\t';
-              break;
-            case 'v':
-              newString += '\v';
-              break;
-            case 'x':
-              {
-                char buf[3];
-                long num;
-                buf[0] = buf[1] = buf[2] = '\0';
-                if( i->v_string[pos] ) buf[0] = i->v_string[pos++];
-                if( i->v_string[pos] ) buf[1] = i->v_string[pos++];
-                num = strtol(buf, NULL, 16);
-                newString += (char) num;
-              }
-              break;
-            default:
-              INT_FATAL("Unknown C string escape");
-              break;
-          }
-        }
-
-        ret = info->builder->CreateGlobalString(newString);
+      // Note that string immediate values are stored
+      // with C escapes - that is newline is 2 chars \ n
+      // so we have to convert to a sequence of bytes
+      // for LLVM (the C backend can just print it out).
+      std::string newString = unescapeString(i->v_string);
+      ret = info->builder->CreateGlobalString(newString);
       break;
   }
 
@@ -3019,6 +2962,65 @@ void LabelSymbol::accept(AstVisitor* visitor) {
 *                                                                   *
 ********************************* | ********************************/
 
+std::string unescapeString(const char* const str) {
+  std::string newString = "";
+  char nextChar;
+  int pos = 0;
+
+  while((nextChar = str[pos++]) != '\0') {
+    if(nextChar != '\\') {
+      newString += nextChar;
+      continue;
+    }
+
+    nextChar = str[pos++];
+    switch(nextChar) {
+      case '\'':
+      case '\"':
+      case '?':
+      case '\\':
+        newString += nextChar;
+        break;
+      case 'a':
+        newString += '\a';
+        break;
+      case 'b':
+        newString += '\b';
+        break;
+      case 'f':
+        newString += '\f';
+        break;
+      case 'n':
+        newString += '\n';
+        break;
+      case 'r':
+        newString += '\r';
+        break;
+      case 't':
+        newString += '\t';
+        break;
+      case 'v':
+        newString += '\v';
+        break;
+      case 'x':
+        {
+          char buf[3];
+          long num;
+          buf[0] = buf[1] = buf[2] = '\0';
+          if( str[pos] ) buf[0] = str[pos++];
+          if( str[pos] ) buf[1] = str[pos++];
+          num = strtol(buf, NULL, 16);
+          newString += (char) num;
+        }
+        break;
+      default:
+        INT_FATAL("Unknown C string escape");
+        break;
+    }
+  }
+  return newString;
+}
+
 static int literal_id = 1;
 HashMap<Immediate *, ImmHashFns, VarSymbol *> uniqueConstantsHash;
 
@@ -3026,15 +3028,17 @@ HashMap<Immediate *, ImmHashFns, VarSymbol *> uniqueConstantsHash;
 // with C escapes - that is newline is 2 chars \ n
 // so this function expects a string that could be in "" in C
 VarSymbol *new_StringSymbol(const char *str) {
+VarSymbol *new_CStringSymbol(const char *str) {
   Immediate imm;
   imm.const_kind = CONST_KIND_STRING;
+  imm.string_kind = STRING_KIND_C_STRING;
   imm.v_string = astr(str);
   VarSymbol *s = uniqueConstantsHash.get(&imm);
   PrimitiveType* dtRetType = dtStringC;
   if (s) {
     return s;
   }
-  s = new VarSymbol(astr("_literal_", istr(literal_id++)), dtRetType);
+  s = new VarSymbol(astr("_cstr_literal_", istr(literal_id++)), dtRetType);
   rootModule->block->insertAtTail(new DefExpr(s));
   s->immediate = new Immediate;
   *s->immediate = imm;
@@ -3215,8 +3219,16 @@ VarSymbol *new_ComplexSymbol(const char *n, long double r, long double i,
 static Type*
 immediate_type(Immediate *imm) {
   switch (imm->const_kind) {
-    case CONST_KIND_STRING:
-      return dtStringC;
+    case CONST_KIND_STRING: {
+      if (imm->string_kind == STRING_KIND_STRING) {
+        return dtString;
+      } else if (imm->string_kind == STRING_KIND_C_STRING) {
+        return dtStringC;
+      } else {
+        INT_FATAL("unhandled string immedate type");
+        break;
+      }
+    }
     case NUM_KIND_BOOL:
       return dtBools[imm->num_index];
     case NUM_KIND_UINT:

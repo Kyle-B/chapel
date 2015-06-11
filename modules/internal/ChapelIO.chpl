@@ -411,9 +411,9 @@ module ChapelIO {
             var st = styleElement(QIO_STYLE_ELEMENT_AGGREGATE);
             var eq:ioLiteral;
             if st == QIO_AGGREGATE_FORMAT_JSON {
-              eq = new ioLiteral(__primitive("field num to name", t, i) + " : ");
+              eq = new ioLiteral(__primitive("field num to name", t, i) + c" : ");
             } else {
-              eq = new ioLiteral(__primitive("field num to name", t, i) + " = ");
+              eq = new ioLiteral(__primitive("field num to name", t, i) + c" = ");
             }
             write(eq);
           }
@@ -435,9 +435,9 @@ module ChapelIO {
               var st = styleElement(QIO_STYLE_ELEMENT_AGGREGATE);
               var eq:ioLiteral;
               if st == QIO_AGGREGATE_FORMAT_JSON {
-                eq = new ioLiteral(__primitive("field num to name", t, i) + " : ");
+                eq = new ioLiteral(__primitive("field num to name", t, i) + c" : ");
               } else {
-                eq = new ioLiteral(__primitive("field num to name", t, i) + " = ");
+                eq = new ioLiteral(__primitive("field num to name", t, i) + c" = ");
               }
               write(eq);
             }
@@ -465,7 +465,7 @@ module ChapelIO {
         if st == QIO_AGGREGATE_FORMAT_JSON {
           start = new ioLiteral("{");
         } else if st == QIO_AGGREGATE_FORMAT_CHPL {
-          start = new ioLiteral("new " + typeToString(t) + "(");
+          start = new ioLiteral("new " + typeToString(t).c_str() + "(");
         } else {
           // the default 'braces' type
           if isClassType(t) {
@@ -880,7 +880,7 @@ module ChapelIO {
      if any, then exits the program.
    */
   proc halt() {
-    __primitive("chpl_error", "halt reached");
+    __primitive("chpl_error", c"halt reached");
   }
 
   /*
@@ -894,7 +894,7 @@ module ChapelIO {
 
   pragma "no doc"
   proc halt(s:c_string) {
-    __primitive("chpl_error", "halt reached - " + s);
+    __primitive("chpl_error", c"halt reached - " + s);
   }
  
   /*
@@ -905,7 +905,7 @@ module ChapelIO {
   proc halt(args ...?numArgs) {
     var tmpstring: c_string;
     tmpstring.write((...args));
-    __primitive("chpl_error", "halt reached - " + tmpstring);
+    __primitive("chpl_error", c"halt reached - " + tmpstring.c_str());
   }
   
   /*
