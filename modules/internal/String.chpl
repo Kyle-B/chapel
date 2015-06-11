@@ -43,7 +43,7 @@ module BaseStringType {
   use SysCTypes;
 
   type bufferType = c_ptr(uint(8));
-  param bufferTypeString: c_string = "c_ptr(uint(8))";
+  //param bufferTypeString: c_string = "c_ptr(uint(8))";
   param min_alloc_size: int = 16;
   // Growth factor to use when extending the buffer for appends
   config param chpl_stringGrowthFactor = 1.5;
@@ -116,12 +116,8 @@ module String {
   record string {
     var len: int = 0; // length of string in bytes
     var _size: int = 0; // size of the buffer we own
-    var buff: bufferType = nil;
-    // I can almost get away without this, but other things get verbose.
-    // This causes us to get padded out to a word boundary :(
-    // TODO: change to const when const checking for auto/initCopy is fixed
+    var buff: c_ptr(uint(8)) = nil;
     var owned: bool = true;
-
 
     proc string(s: string, owned: bool = true) {
       this.owned = owned;
@@ -169,21 +165,28 @@ module String {
         if (s_len == 0) || (buf == nil) then return; // nothing to do
       }
 
-      // If the this.buff is longer than buf, then reuse the buffer
+      // If the this.buff is longer than buf, then reuse the buffer if we are
+      // allowed to (this.owned == true)
       if s_len != 0 {
         if needToCopy {
-          if s_len+1 > this._size {
-            // free the old buffer
+          if !this.owned || s_len+1 > this._size {
+            // If the new string is too big for our current buffer or we dont
+            // own our current buffer then we need a new one.
             if this.owned && !this.isEmptyString() then
               on this do chpl_mem_free(this.buff);
-            // allocate a new buffer
+            // TODO: should I just allocate 'size' bytes rather than the minium
+            //       of s_len+1?
             this.buff = chpl_mem_alloc((s_len+1).safeCast(size_t),
                                        CHPL_RT_MD_STR_COPY_DATA):bufferType;
             this.buff[s_len] = 0;
             this._size = s_len+1;
+            // We just allocaed a buffer, make sure to free it later
+            this.owned = true;
           }
           memmove(this.buff, buf, s_len.safeCast(size_t));
         } else {
+          if this.owned && !this.isEmptyString() then
+            on this do chpl_mem_free(this.buff);
           this.buff = buf;
           this._size = size;
         }
@@ -587,6 +590,7 @@ module String {
   //TODO: figure out how to remove the concats between
   //      string and c_string[_copy]
   // promotion of c_string to string is masking this issue I think.
+  /*
   proc +(s: string, cs: c_string) where isParam(cs) {
     //compilerWarning("adding c_string to string");
     return _concat_helper(s, cs, stringFirst=true);
@@ -606,7 +610,7 @@ module String {
   proc +(/*ref*/ cs: c_string_copy, s: string) where isParam(cs) {
     //compilerWarning("adding string to c_string_copy");
     return _concat_helper(s, cs, stringFirst=false);
-  }
+  }*/
 
   // Concatenation with other types is done by casting to string
   inline proc concatHelp(s: string, x:?t) where t != string {
@@ -627,6 +631,71 @@ module String {
   inline proc +(x: enumerated, s: string) return concatHelp(x, s);
   inline proc +(s: string, x: bool) return concatHelp(s, x);
   inline proc +(x: bool, s: string) return concatHelp(x, s);
+
+  // Param procs
+  proc typeToString(type t) param {
+    return __primitive("typeToString", t);
+  }
+
+  proc typeToString(x) param {
+    compilerError("typeToString()'s argument must be a type, not a value");
+  }
+
+  inline proc ==(param s0: string, param s1: string) param  {
+    return __primitive("string_compare", s0, s1) == 0;
+  }
+
+  inline proc !=(param s0: string, param s1: string) param {
+    return __primitive("string_compare", s0, s1) != 0;
+  }
+
+  inline proc <=(param a: string, param b: string) param {
+    return (__primitive("string_compare", a, b) <= 0);
+  }
+
+  inline proc >=(param a: string, param b: string) param {
+    return (__primitive("string_compare", a, b) >= 0);
+  }
+
+  inline proc <(param a: string, param b: string) param {
+    return (__primitive("string_compare", a, b) < 0);
+  }
+
+  inline proc >(param a: string, param b: string) param {
+    return (__primitive("string_compare", a, b) > 0);
+  }
+
+  inline proc +(param a: string, param b: string) param
+    return __primitive("string_concat", a, b);
+
+  inline proc +(param s: string, param x: integral) param
+    return __primitive("string_concat", s, x:string);
+
+  inline proc +(param x: integral, param s: string) param
+    return __primitive("string_concat", x:string, s);
+
+  inline proc +(param s: string, param x: enumerated) param
+    return __primitive("string_concat", s, x:string);
+
+  inline proc +(param x: enumerated, param s: string) param
+    return __primitive("string_concat", x:string, s);
+
+  inline proc +(param s: string, param x: bool) param
+    return __primitive("string_concat", s, x:string);
+
+  inline proc +(param x: bool, param s: string) param
+    return __primitive("string_concat", x:string, s);
+
+  inline proc ascii(param a: string) param return __primitive("ascii", a);
+
+  inline proc param string.length param
+    return __primitive("string_length", this);
+
+  inline proc _string_contains(param a: string, param b: string) param
+    return __primitive("string_contains", a, b);
+
+
+
 
   //
   // Append

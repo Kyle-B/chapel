@@ -42,10 +42,10 @@ module CString {
 
   // The following method is called by the compiler to determine the default
   // value of a given type.
-  inline proc _defaultOf(type t) param where t: c_string return "":c_string;
+  inline proc _defaultOf(type t) param where t: c_string return c"";
   inline proc _defaultOf(type t) where t == c_string_copy return _nullString;
 
-  inline proc c_string.c_str() return this;
+  //inline proc c_string.c_str() return this;
 
   // These routines consume the c_string_copy argument.  In terms of MM, this
   // is the same as if the caller had called chpl_free_string_copy()
@@ -84,13 +84,13 @@ module CString {
     return x;
   }
 
-  proc typeToString(type t) param {
-    return __primitive("typeToString", t);
-  }
+  //proc typeToString(type t) param {
+  //  return __primitive("typeToString", t);
+  //}
 
-  proc typeToString(x) param {
-    compilerError("typeToString()'s argument must be a type, not a value");
-  }
+  //proc typeToString(x) param {
+  //  compilerError("typeToString()'s argument must be a type, not a value");
+  //}
 
   inline proc ==(param s0: c_string, param s1: c_string) param {
     return __primitive("string_compare", s0, s1) == 0;
@@ -409,9 +409,6 @@ module CString {
     var lo:int = r2.alignedLow, hi:int = r2.alignedHigh;
     return __primitive("string_select", this, lo, hi, r2.stride);
   }
-
-  inline proc _string_contains(a: string, b: string)
-    return __primitive("string_contains", a, b);
 
   inline proc param c_string.length param
     return __primitive("string_length", this);

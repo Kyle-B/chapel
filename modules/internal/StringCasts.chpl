@@ -199,32 +199,39 @@ module StringCasts {
   }
 
   //
-  // enumerated
+  // Catch all
   //
-  proc _cast(type t, x:enumerated) where t == string {
-    extern proc strlen(const str: c_string) : size_t;
-
-    // Use the compiler-generated enum to c_string conversion.
-    var cs = _cast(c_string, x);
-
-    var ret = new string(owned=false);
-    ret.buff = cs:c_ptr(uint(8));
-    ret.len = strlen(cs).safeCast(int);
-    ret._size = ret.len+1;
-
+  // Convert 'x' to a string just the way it would be written out.
+  // Includes Writer.write, with modifications (for simplicity; to avoid 'on').
+  //
+  // This is marked as compiler generated so it doesn't take precedence over
+  // genereated casts from types like enums
+  pragma "compiler generated"
+  proc _cast(type t, x) where t == string {
+    compilerWarning("_cast to string via StringWriter");
+    /*
+    //proc isNilObject(o: object) return o == nil;
+    //proc isNilObject(o) param return false;
+    const w = new StringWriter();
+    //if isNilObject(x) then "nil".writeThis(w);
+    //else                   x.writeThis(w);
+    w.write(x);
+    const result = w.s.steal_base();
+    delete w;
+    return result;*/
+    var ret: string;
+    ret.write(x);
     return ret;
   }
-
-
 
   //
   // Badness
   //
   // TODO: I *really* dont like this
   // Other casts to strings use the bufferType
-  inline proc _cast(type t, x) where t == string && x.type != c_string && x.type != string {
-    compilerError("_cast ":c_string+typeToString(x.type)+"->c_string->string":c_string);
-  }
+  //inline proc _cast(type t, x) where t == string && x.type != c_string && x.type != string {
+  //  compilerError("_cast ":c_string+typeToString(x.type)+"->c_string->string":c_string);
+  //}
 
 
 }
