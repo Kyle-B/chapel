@@ -80,24 +80,30 @@ inlineCall(FnSymbol* fn, CallExpr* call, Vec<FnSymbol*>& canRemoveRefTempSet) {
     call->replace(return_value);
 }
 
-#if 0
-// Ideally we would compute this after inling all nested functions, but that
-// doesn't work due to some cases that explictly expect a ref and have deref
+// Ideally we would compute this after inlining all nested functions, but that
+// doesn't work due to some cases that explicitly expect a ref and have deref
 // calls. Future work would be to find those cases and make change this check
-// to support nested inling if possible.
+// to support nested inlining if possible.
 static bool canRemoveRefTemps(FnSymbol* fn) {
-  if (!fn) // primitive
-    return true;
+  for_formals(formal, fn) {
+    Type* formalType = formal->typeInfo();
+    Type* valueType = formalType->getValType();
 
-  // Work around for a bug with non-default size bools in no-local. I believe
-  // they dont work in no-local due to not preserving thier size during
-  // codegen.
-  // TODO: Check if this can be removed onces bool sizes are preserved
-  //       ( test/types/scalar/bradc/bools[2].chpl )
-  if (!fLocal) {
-    for_formals(formal, fn) {
-      if (is_bool_type(formal->typeInfo()))
-        return false;
+    // Tuples have a bad time with this optimization for some reason. Disable
+    // them for now. (something changed with the new AMM)
+    // TODO: Look into why these temps cant be removed anymore
+    if (valueType->symbol->hasFlag(FLAG_TUPLE)) {
+      return false;
+    }
+
+    // Work around for a bug with non-default size bools in no-local. I believe
+    // they dont work in no-local due to not preserving their size during
+    // codegen.
+    // TODO: Check if this can be removed onces bool sizes are preserved
+    //       ( test/types/scalar/bradc/bools[2].chpl )
+    if (!fLocal) {
+        if (is_bool_type(formalType))
+          return false;
     }
   }
 
@@ -114,11 +120,10 @@ static bool canRemoveRefTemps(FnSymbol* fn) {
 
   return true;
 }
-#endif
 
-// Search for the first assingment (a PRIM_MOVE) to a ref temp. If found, the
+// Search for the first assignment (a PRIM_MOVE) to a ref temp. If found, the
 // CallExpr doing the assignment will be returned, otherwise NULL. This works
-// because a ref temp's DefExpr and inital assignment are inserted togther
+// because a ref temp's DefExpr and initial assignment are inserted together
 // inside of insertReferenceTemps.
 static CallExpr* findRefTempInit(SymExpr* se) {
   Expr* expr = se->var->defPoint->next;
@@ -196,7 +201,7 @@ static int breakOnRM = 0; //vass
 //
 // Remove 'deref' prim calls for the symbols in 'noDR'.
 // Those symbols are e.g. where a ref temp actual was replaced
-// with its referencee in calculateFormalActualMap().
+// with its references in calculateFormalActualMap().
 //
 static void removeUnnecessaryDerefs(std::set<Symbol*>& noDR, BlockStmt* block)
 {
@@ -286,13 +291,11 @@ inlineFunctions() {
     Vec<FnSymbol*> canRemoveRefTempSet;
 
     compute_call_sites();
-#if 0
     forv_Vec(FnSymbol, fn, gFnSymbols) {
       if (canRemoveRefTemps(fn)) {
         canRemoveRefTempSet.set_add(fn);
       }
     }
-#endif
     forv_Vec(FnSymbol, fn, gFnSymbols) {
       if (fn->hasFlag(FLAG_INLINE) && !inlinedSet.set_in(fn))
         inlineFunction(fn, inlinedSet, canRemoveRefTempSet);
