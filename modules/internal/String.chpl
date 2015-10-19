@@ -91,6 +91,60 @@ module String {
   inline proc <(a: string, b: string) return a.c_str()<b.c_str();
   inline proc >(a: string, b: string) return a.c_str()>b.c_str();
 
+  // Param string functions
+  inline proc ==(param s0: string, param s1: string) param  {
+    return __primitive("string_compare", s0, s1) == 0;
+  }
+
+  inline proc !=(param s0: string, param s1: string) param {
+    return __primitive("string_compare", s0, s1) != 0;
+  }
+
+  inline proc <=(param a: string, param b: string) param {
+    return (__primitive("string_compare", a, b) <= 0);
+  }
+
+  inline proc >=(param a: string, param b: string) param {
+    return (__primitive("string_compare", a, b) >= 0);
+  }
+
+  inline proc <(param a: string, param b: string) param {
+    return (__primitive("string_compare", a, b) < 0);
+  }
+
+  inline proc >(param a: string, param b: string) param {
+    return (__primitive("string_compare", a, b) > 0);
+  }
+
+  inline proc +(param a: string, param b: string) param
+    return __primitive("string_concat", a, b);
+
+  inline proc +(param s: string, param x: integral) param
+    return __primitive("string_concat", s, x:string);
+
+  inline proc +(param x: integral, param s: string) param
+    return __primitive("string_concat", x:string, s);
+
+  inline proc +(param s: string, param x: enumerated) param
+    return __primitive("string_concat", s, x:string);
+
+  inline proc +(param x: enumerated, param s: string) param
+    return __primitive("string_concat", x:string, s);
+
+  inline proc +(param s: string, param x: bool) param
+    return __primitive("string_concat", s, x:string);
+
+  inline proc +(param x: bool, param s: string) param
+    return __primitive("string_concat", x:string, s);
+
+  inline proc ascii(param a: string) param return __primitive("ascii", a);
+
+  inline proc param string.length param
+    return __primitive("string_length", this);
+
+  inline proc _string_contains(param a: string, param b: string) param
+    return __primitive("string_contains", a, b);
+
   //
   // primitive string functions and methods
   //
@@ -246,22 +300,22 @@ module String {
     var op: c_string;
     if x.im < 0 {
       im = (-x.im):c_string_copy;
-      op = " - ";
-    } else if im == "-0.0" {
-      im = "0.0":c_string_copy;
-      op = " - ";
+      op = c" - ";
+    } else if im == c"-0.0" {
+      im = c"0.0":c_string_copy;
+      op = c" - ";
     } else {
       im = (x.im):c_string_copy;
-      op = " + ";
+      op = c" + ";
     }
     // TODO: Add versions of the concatenation operator that consume their
     // c_string_copy arg or args.
-    var ts0 = re + op;
+    var ts0: c_string_copy = re + op;
     chpl_free_c_string_copy(re);
-    var ts1 = ts0 + im;
+    var ts1:c_string_copy = ts0 + im;
     chpl_free_c_string_copy(ts0);
     chpl_free_c_string_copy(im);
-    const ret = ts1 + "i";
+    const ret:c_string_copy = ts1 + c"i";
     chpl_free_c_string_copy(ts1);
     return ret;
   }
@@ -472,7 +526,7 @@ module CString {
 
   inline proc _cast(type t, x:enumerated) where t == c_string_copy {
     // Use the compiler-generated enum to c_string conversion.
-    var cs = _cast(c_string, x);
+    var cs = _cast(string, x).c_str();
     return __primitive("string_copy", cs);
   }
 

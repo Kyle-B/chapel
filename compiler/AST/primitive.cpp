@@ -55,11 +55,6 @@ returnInfoStringC(CallExpr* call) {
 }
 
 static Type*
-returnInfoString(CallExpr* call) {
-  return dtString;
-}
-
-static Type*
 returnInfoStringCopy(CallExpr* call) {
   return dtStringCopy;
 }

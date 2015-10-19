@@ -1230,6 +1230,9 @@ static bool canParamCoerce(Type* actualType, Symbol* actualSym, Type* formalType
         if (fits_in_uint(get_width(formalType), var->immediate))
           return true;
   }
+  if (formalType == dtStringC && actualType == dtString)
+    if (actualSym && actualSym->isImmediate())
+      return true;
   return false;
 }
 
@@ -1270,13 +1273,13 @@ canCoerce(Type* actualType, Symbol* actualSym, Type* formalType, FnSymbol* fn, b
   }
   if (actualType->symbol->hasFlag(FLAG_REF))
     return canDispatch(actualType->getValType(), NULL, formalType, fn, promotes);
-  if (// isLcnSymbol(actualSym) && // What does this exclude?
-      actualType == dtStringC && formalType == dtString)
-    return true;
-  if (formalType == dtStringC && actualType == dtStringCopy)
+  if (formalType == dtString && actualType == dtStringC)
     return true;
   if (formalType == dtString && actualType == dtStringCopy)
     return true;
+  if (formalType == dtStringC && actualType == dtStringCopy)
+    return true;
+
   return false;
 }
 
@@ -5130,13 +5133,22 @@ preFold(Expr* expr) {
                   VarSymbol* typevar = toVarSymbol(newType->defaultValue);
                   EnumType* typeenum = toEnumType(newType);
                   if (typevar) {
-                    if (!typevar->immediate)
-                      INT_FATAL("unexpected case in cast_fold");
+                    if (newType == dtString) {
+                        // dtString's defaultValue isnt an immedate so we need
+                        // a special case.
+                        Immediate coerce = Immediate("", STRING_KIND_STRING);
+                        coerce_immediate(var->immediate, &coerce);
+                        result = new SymExpr(new_StringSymbol(coerce.v_string));
+                        call->replace(result);
+                    } else {
+                      if (!typevar->immediate)
+                        INT_FATAL("unexpected case in cast_fold");
 
-                    Immediate coerce = *typevar->immediate;
-                    coerce_immediate(var->immediate, &coerce);
-                    result = new SymExpr(new_ImmediateSymbol(&coerce));
-                    call->replace(result);
+                      Immediate coerce = *typevar->immediate;
+                      coerce_immediate(var->immediate, &coerce);
+                      result = new SymExpr(new_ImmediateSymbol(&coerce));
+                      call->replace(result);
+                    }
                   } else if (typeenum) {
                     int64_t value, count = 0;
                     bool replaced = false;

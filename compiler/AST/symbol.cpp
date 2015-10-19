@@ -3023,11 +3023,28 @@ std::string unescapeString(const char* const str) {
 
 static int literal_id = 1;
 HashMap<Immediate *, ImmHashFns, VarSymbol *> uniqueConstantsHash;
+HashMap<Immediate *, ImmHashFns, VarSymbol *> stringLiteralsHash;
 
 // Note that string immediate values are stored
 // with C escapes - that is newline is 2 chars \ n
 // so this function expects a string that could be in "" in C
 VarSymbol *new_StringSymbol(const char *str) {
+  Immediate imm;
+  imm.const_kind = CONST_KIND_STRING;
+  imm.string_kind = STRING_KIND_STRING;
+  imm.v_string = astr(str);
+  VarSymbol *s = stringLiteralsHash.get(&imm);
+  if (s) {
+    return s;
+  }
+  s = new VarSymbol(astr("_str_literal_", istr(literal_id++)), dtString);
+  rootModule->block->insertAtTail(new DefExpr(s));
+  s->immediate = new Immediate;
+  *s->immediate = imm;
+  stringLiteralsHash.put(s->immediate, s);
+  return s;
+}
+
 VarSymbol *new_CStringSymbol(const char *str) {
   Immediate imm;
   imm.const_kind = CONST_KIND_STRING;

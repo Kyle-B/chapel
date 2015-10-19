@@ -465,7 +465,7 @@ module ChapelIO {
         if st == QIO_AGGREGATE_FORMAT_JSON {
           start = new ioLiteral("{");
         } else if st == QIO_AGGREGATE_FORMAT_CHPL {
-          start = new ioLiteral("new " + typeToString(t).c_str() + "(");
+          start = new ioLiteral("new " + typeToString(t) + "(");
         } else {
           // the default 'braces' type
           if isClassType(t) {
